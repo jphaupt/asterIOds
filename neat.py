@@ -46,6 +46,9 @@ doesn't make any use of previous frames though... can't infer any knowledge
 like rock velocity, etc.
 later would like to use neuroevolution to also change the topology (# neurons),
 etc.
+
+TODO : decide what to use in the activation function for the hidden layer... 
+idea : make this an evolved parameter ??
 """
 # %% imports 
 import math
@@ -57,25 +60,35 @@ INPUT_WIDTH = 15
 OUTPUT_WIDTH = 4
 HIDDEN_WIDTH = 20 # play with this parameter
 
+# %% activation functions
+def linear(x) :
+    return x
+    
+def sigmoid(x):
+    fn = lambda x : 1/(1+math.exp(-x))
+    fn = np.vectorize(fn)
+    return fn(x) 
+
+def tanh(x) :
+    return 2*sigmoid(x) - 1
+
+# TODO : other activation functions to evolve from! 
+    
 # %% 
 class Individual() :
     '''
     an individual in the population, i.e. a neural network
     initializing one gives random weights
-    '''
-    def __init__(self, nb_input, nb_hidden, nb_output) :
+    '''    
+    
+    def __init__(self, nb_input, nb_hidden, nb_output, activation=linear) :
         self.nb_input = nb_input
         self.nb_hidden = nb_hidden
         self.nb_output = nb_output
         # TODO : make gaussian to allow large outliers
         # includes bias
-        self.W = [np.random.rand(nb_hidden, nb_input+1), np.random.rand(nb_output, nb_hidden+1)]
-        pass # TODO : stub
-        
-    def sigmoid(self, x):
-        fn = lambda x : 1/(1+math.exp(-x))
-        fn = np.vectorize(fn)
-        return fn(x) 
+        self.W = [np.random.randn(nb_hidden, nb_input+1), np.random.randn(nb_output, nb_hidden+1)]
+        self.activation = activation
     
     def predict(self, input_vect) : 
         input_vect = np.append(1, input_vect) # bias
@@ -83,10 +96,10 @@ class Individual() :
 #        print(input_vect) 
         self.last_h = np.dot(self.W[0], np.transpose(input_vect))
 #        print(self.last_h) 
-        self.last_h = self.sigmoid(self.last_h)
+        self.last_h = self.activation(self.last_h)
 #        print(self.last_h) 
         self.last_h  = np.append(1, self.last_h)
 #        print(self.last_h) 
         self.last_out = np.dot(self.W[1], self.last_h)
-        self.last_out = self.sigmoid(self.last_out)
-        return self.last_out 
+        self.last_out = sigmoid(self.last_out)
+        return self.last_out

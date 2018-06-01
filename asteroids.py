@@ -56,7 +56,7 @@ GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 NUM_PER_SPLIT = 3 # number of rocks a rock splits into when hit
 MAX_MISSILES = 5 # limit number of missiles possible to shoot 
-VISUALIZE = False # figure out way to handle this outside file 
+VISUALIZE = True # figure out way to handle this outside file 
 
 # variable
 time = 0
@@ -121,7 +121,6 @@ class Ship(Sprite) :
         self.vel *= (1 - fric)
         
         Sprite.update(self) 
-        
         
     def set_ang_vel(self, ang_vel) :
         self.ang_vel = ang_vel 
@@ -360,20 +359,22 @@ while is_running or VISUALIZE :
     # AI player 
     # TODO make AI play this, obviously not just random input each time... 
     # TODO : different methods... 
-    tmp_out = tmp.predict(np.random.rand(15,)) 
+    tmp_out = tmp.predict(5 * np.random.rand(15,)) 
     ang_vel = 3*np.pi/180
+    # allow several buttons to be pressed at once
     if tmp_out[0] >= 0.5 : # left
         player.set_ang_vel(-ang_vel)
     elif tmp_out[1] >= 0.5 : # right
         player.set_ang_vel(ang_vel)
     else :
-        player.set_angle_vel(0) 
+        player.set_ang_vel(0) 
     if tmp_out[2] >= 0.5 : # forward
         player.set_thrust(True)
     else : 
         player.set_thrust(False)
     if tmp_out[3] >= 0.5 : # should I have an else here?? 
         player.shoot() 
+    print(tmp_out)
 #    print(player.pos) 
     
     
@@ -390,9 +391,9 @@ while is_running or VISUALIZE :
             
     if VISUALIZE :
         pygame.display.update()
-    # limit FPS
+        # limit FPS
         clock.tick(60) # not sure if worked 
-    # TODO
+
     if not VISUALIZE :
         if not is_running :
             print(score) 
