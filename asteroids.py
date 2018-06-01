@@ -348,7 +348,7 @@ pygame.time.set_timer(SPAWN_ROCKS, t)
 player = Ship([CANVAS_WIDTH / 2,CANVAS_HEIGHT / 2], [0.,0.], np.pi)
 spawn_random_rocks(player)
 # TODO : do this in neat.py... somehow
-tmp = neat.Individual(neat.INPUT_WIDTH, neat.HIDDEN_WIDTH, neat.OUTPUT_WIDTH)
+tmp = neat.Individual(neat.relu)
 if not VISUALIZE :
     canvas = None # pass in dummy object since we're not drawing anything 
 # TODO : allow differentiating between AI and human (boolean isAI) 

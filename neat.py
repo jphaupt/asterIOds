@@ -61,6 +61,7 @@ OUTPUT_WIDTH = 4
 HIDDEN_WIDTH = 20 # play with this parameter
 
 # %% activation functions
+# TODO : somehow encode this as something to be mutated
 def linear(x) :
     return x
     
@@ -72,6 +73,11 @@ def sigmoid(x):
 def tanh(x) :
     return 2*sigmoid(x) - 1
 
+def relu(x) :
+    fn = lambda x : np.max((0, x))
+    fn = np.vectorize(fn) 
+    return fn(x) 
+
 # TODO : other activation functions to evolve from! 
     
 # %% 
@@ -81,7 +87,8 @@ class Individual() :
     initializing one gives random weights
     '''    
     
-    def __init__(self, nb_input, nb_hidden, nb_output, activation=linear) :
+    def __init__(self, activation, nb_input=INPUT_WIDTH, 
+                 nb_hidden=HIDDEN_WIDTH, nb_output=OUTPUT_WIDTH) :
         self.nb_input = nb_input
         self.nb_hidden = nb_hidden
         self.nb_output = nb_output
