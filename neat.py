@@ -49,7 +49,7 @@ this is a very simple version of a genetic algorithm and at the present
 implementation does not involve any advanced techniques 
 """
 # %% imports 
-import math
+#import math
 import numpy as np
 from scipy.special import expit 
 import asteroids
@@ -67,7 +67,7 @@ NUM_ROCK_IN = 5
 IN_W_MUTATE_PROB = 0.3
 OUT_W_MUTATE_PROB = 0.25
 ACTIVATION_MUTATE_PROB = 0.2
-NB_GAMES_PER_INDIV = 10
+NB_GAMES_PER_INDIV = 20
 
 # time it
 timeStart = time.time()
@@ -318,11 +318,11 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
 if __name__ == "__main__":
     # TODO : run for lots of generations 
     # hyperparameters for algorithm to run on
-    size_population = 12 # size of the population each generation
-    best_sample = 5 # how many of the most fit individuals reproduce in a population
-    lucky_few = 3 # number of randomly selected individuals who get to reproduce (for genetic diversity)
-    nb_children = 3 # how many offspring each couple produces
-    nb_gens = 15 #  number of generations until program terminates
+    size_population = 100 # size of the population each generation
+    best_sample = 40 # how many of the most fit individuals reproduce in a population
+    lucky_few = 10 # number of randomly selected individuals who get to reproduce (for genetic diversity)
+    nb_children = 4 # how many offspring each couple produces
+    nb_gens = 50 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):

@@ -193,12 +193,21 @@ def collide_ship_rock(ship, rocks) :
     todo : also something about respawn and temporary invulnerability? 
     '''
     # TODO : actually check if the SHIP collides 
-    # at the moment, only checks if the pixel in the centre ("cockpit") collides,
+    # at the moment, only checks if the pixels in corners collide,
     # not the triangle :( 
     # TODO : do stuff in the case of still having lives left
+    # get ship points, and check if they are in the circle 
+    # this is not the same as checking triangle collision (just a temp fix)
+    # also checking cockpit, just for good measure
+    rot = rotate_mat(ship.ang)
+    pts2check = [ship.pos-rot.dot(np.array([SHIP_WIDTH//2, SHIP_HEIGHT//2])), 
+                                 ship.pos-rot.dot(np.array([-SHIP_WIDTH//2, SHIP_HEIGHT//2])), 
+                                 ship.pos+rot.dot(np.array([0, SHIP_HEIGHT//2])),
+                                 ship.pos]
     for rock in rocks :
-        if np.linalg.norm(rock.pos - ship.pos) <= rock.size * MIN_ROCK_RADIUS:
-            return True
+        for pt in pts2check :
+            if np.linalg.norm(rock.pos - pt) <= rock.size * MIN_ROCK_RADIUS:
+                return True
         
     return False
 
@@ -322,7 +331,7 @@ def spawn_random_rocks(ship) :
 #    print("Spawning rocks")
     # not sure what number to divide score by 
     # TODO : seems NNs have no idea what to do when there is less than 5 rocks
-    num_to_spawn = int(score/50) + 1#random.randint(1,4) # how many rocks do I spawn? make func tion of score? make random?
+    num_to_spawn = int(score/50) + 2#random.randint(1,4) # how many rocks do I spawn? make func tion of score? make random?
     for i in range(num_to_spawn) : 
         ang = random.uniform(0, 2 * np.pi)
         r = random.uniform(SHIP_HEIGHT * 5, CANVAS_WIDTH - SHIP_HEIGHT * 5)
