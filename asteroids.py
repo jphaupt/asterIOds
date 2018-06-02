@@ -56,7 +56,7 @@ GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 NUM_PER_SPLIT = 3 # number of rocks a rock splits into when hit
 MAX_MISSILES = 5 # limit number of missiles possible to shoot 
-VISUALIZE = True # figure out way to handle this outside file 
+#visualize = False # figure out way to handle this outside file 
 
 
 
@@ -265,7 +265,7 @@ def draw(canvas, visualize=True) :
                 missiles.remove(missile) 
 
     if lives < 1:
-        game_over(visualize=VISUALIZE)
+        game_over(visualize=visualize)
     
 def rotate_mat(angle) :
     rot = np.array([[np.cos(angle), -np.sin(angle)],
@@ -370,7 +370,7 @@ def find_neural_input(nn, ship, rocks) :
     // again with x -> y and width -> height
     
     NOTE : inputs are normalised as follows 
-        square distance divided by CANVAS_WIDTH*CANVAS_HEIGHT
+        square distance divided by CANVAS_WIDTH*CANVAS_HEIGHT/2
         angle / pi (so between -1 and 1)
         size / 3 TODO : improve this one...
     '''
@@ -386,7 +386,8 @@ def find_neural_input(nn, ship, rocks) :
     else :
         closest = rocks[:neat.NUM_ROCK_IN]
     for i in range(len(closest)) :
-        nn_in[dist_ind[i]] = dist_sq_bw(closest[i], ship) / (CANVAS_WIDTH*CANVAS_HEIGHT) 
+        nn_in[dist_ind[i]] = dist_sq_bw(closest[i], ship) / (CANVAS_WIDTH*CANVAS_HEIGHT/4) 
+#        print(nn_in[dist_ind[i]]) 
 #        ship2rock = closest_vect(closest[i], ship)
         # TODO : not sure if this is a good way to get polar coords
         ship2rock = closest[i].pos - ship.pos
@@ -401,19 +402,19 @@ def find_neural_input(nn, ship, rocks) :
 #        nn_in[ang_ind[i]] %= 2*np.pi
 #        nn_in[ang_ind[i]] += np.pi
 #        nn_in[ang_ind[i]] /= 2*np.pi
-        nn_in[ang_ind[i]] =ret_ang
+        nn_in[ang_ind[i]] = ret_ang
 #        print(nn_in[ang_ind[i]])
         nn_in[size_ind[i]] = closest[i].size / 3
     return nn_in
 
 # %% game loop
-def game_loop(isAI=False, nn=None) :
-    global canvas, player, VISUALIZE, time, lives, missiles, rocks, score, is_running
+def game_loop(isAI=False, nn=None, visualize=True) :
+    global canvas, player, time, lives, missiles, rocks, score, is_running, SPAWN_ROCKS, t
     pygame.init()
-    if VISUALIZE :
+    if visualize :
         canvas = pygame.display.set_mode((CANVAS_WIDTH,CANVAS_HEIGHT))
         pygame.display.set_caption('Asteroids')
-    if not VISUALIZE :
+    if not visualize :
         canvas = None # pass in dummy object since we're not drawing anything
     clock = pygame.time.Clock()
     
@@ -435,9 +436,9 @@ def game_loop(isAI=False, nn=None) :
     # TODO : do this in neat.py... somehow
     
     #player.set_ang_vel(np.pi/180)
-    while is_running or VISUALIZE :
+    while is_running or visualize :
 #        print('in loop')
-        draw(canvas, visualize=VISUALIZE)
+        draw(canvas, visualize=visualize)
         
         # AI player 
         # TODO make AI play this, obviously not just random input each time... 
@@ -477,14 +478,14 @@ def game_loop(isAI=False, nn=None) :
             if event.type == SPAWN_ROCKS :
                 spawn_random_rocks(player)
                 
-        if VISUALIZE :
+        if visualize :
             pygame.display.update()
             # limit FPS
             clock.tick(60) # not sure if worked 
     
-        if not VISUALIZE :
+        if not visualize :
             if not is_running :
-                print(score) 
+#                print(score) 
                 return score
             
 # %% if you just run the file
