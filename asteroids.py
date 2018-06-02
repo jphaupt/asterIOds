@@ -321,6 +321,7 @@ def spawn_random_rocks(ship) :
     # but not on top of the ship
 #    print("Spawning rocks")
     # not sure what number to divide score by 
+    # TODO : seems NNs have no idea what to do when there is less than 5 rocks
     num_to_spawn = int(score/50) + 1#random.randint(1,4) # how many rocks do I spawn? make func tion of score? make random?
     for i in range(num_to_spawn) : 
         ang = random.uniform(0, 2 * np.pi)
@@ -378,8 +379,8 @@ def find_neural_input(nn, ship, rocks) :
     dist_ind = np.arange(0,neat.NUM_ROCK_IN)*3
     ang_ind = np.arange(0,neat.NUM_ROCK_IN)*3 + 1
     size_ind = np.arange(0,neat.NUM_ROCK_IN)*3 + 2
-    # initalize distances to infinity
-    nn_in[dist_ind] = np.inf
+    # initalize distances to a large number (getting NaN with np.inf)
+    nn_in[dist_ind] = 100*np.max((CANVAS_WIDTH, CANVAS_HEIGHT))
     rocks.sort(key = lambda x : dist_sq_bw(x, ship)) 
     if len(rocks) < neat.NUM_ROCK_IN : 
         closest = rocks # TODO : complete implementing input 

@@ -23,11 +23,6 @@ output : probabilities of the following actions
     rotate left
     rotate right
     activate thrust
-    
-hidden layers... lol idk ??
-
-just as an exercise, I also plan to write this network entire in tensorflow 
-(no keras) 
 
 what parameters should be tuned by this genetic algo? Ideas : 
     # layers 
@@ -35,7 +30,7 @@ what parameters should be tuned by this genetic algo? Ideas :
     activation function per layer
 probably just keep all layers as fully connected
 
-for now: just do a vanilla network? 
+for now: just do a vanilla network
 
 simple version for now, perhaps: 
     3 layer perceptron 
@@ -60,6 +55,8 @@ from scipy.special import expit
 import asteroids
 import random
 import operator
+import time 
+import matplotlib.pyplot as plt
 
 # %% constants for evolution
 INITIAL_POP_SIZE = 10
@@ -70,6 +67,10 @@ NUM_ROCK_IN = 5
 IN_W_MUTATE_PROB = 0.3
 OUT_W_MUTATE_PROB = 0.25
 ACTIVATION_MUTATE_PROB = 0.2
+NB_GAMES_PER_INDIV = 10
+
+# time it
+timeStart = time.time()
 
 # %% activation functions
 # TODO : somehow encode this as something to be mutated. Dictionary? 
@@ -139,11 +140,10 @@ def fitness(indiv) :
     TODO : average a few games to reduce randomly succeeding ? 
     currently averaging five games
     '''
-    num = 5
     acc = 0
-    for i in range(num) : 
+    for i in range(NB_GAMES_PER_INDIV) : 
         acc += asteroids.game_loop(isAI=True, nn=indiv, visualize=False) 
-    acc /= num
+    acc /= NB_GAMES_PER_INDIV
     return acc 
 
 def generate_rand_indiv() : 
@@ -176,9 +176,12 @@ def compute_pop_score(population) :
     '''
     # TODO : preallocation...
     pop_score = {}
+#    print(population)
     for indiv in population :
+#        print("in loop!")
         pop_score[indiv] = fitness(indiv)
     # highest score to lowest
+#    print("left loop!")
     return sorted(pop_score.items(), key = operator.itemgetter(1), reverse=True)
 
 def select_from_pop(population_sorted, best_sample, lucky_few) :
@@ -210,14 +213,21 @@ def create_child(individual1, individual2) :
     currently assumes that the two individuals having sexy time have the exact
     same neural architecture (well, except for hidden layer activation func)
     '''
+    # TODO : find a more efficient way to run this? I suspect this is a 
+    # bottleneck for run time...
     W1 = individual1.W
     W2 = individual2.W
     child = Individual(random.choice([individual1.activation, individual2.activation]), 
                        rand_weights=False)
-    a, b = child.W.shape # assume == W1.shape == W2.shape
+    a, b = child.W[0].shape # assume == W1[0].shape == W2[0].shape
     for i in range(a) :
         for j in range(b) :
-            child.W[i][j] = random.choice([W1[i][j], W2[i][j]]) 
+            child.W[0][i][j] = random.choice([W1[0][i][j], W2[0][i][j]]) 
+    # repeat for output layer...
+    a, b = child.W[1].shape # assume == W1[1].shape == W2[1].shape
+    for i in range(a) :
+        for j in range(b) :
+            child.W[1][i][j] = random.choice([W1[1][i][j], W2[1][i][j]]) 
             
     return child
 
@@ -273,11 +283,16 @@ def next_generation(curr_gen, nb_children, best_sample, lucky_few) :
     returns both the next generation and the best of the previous
     (for comparison and visualization... basically for fun)
     '''
+#    print(curr_gen) 
     sorted_pop = compute_pop_score(curr_gen) 
+#    print("sorted pop")
     breeders = select_from_pop(sorted_pop, best_sample, lucky_few)
+#    print("best selected") 
     next_pop = create_children(breeders, nb_children)
-    next_gen = mutate_population(next_pop)
-    return next_gen, sorted_pop[0] 
+#    print("had sexy times") 
+    mutate_population(next_pop)
+#    print(next_pop) 
+    return next_pop, sorted_pop[0] 
 
 def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
     '''
@@ -298,3 +313,34 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
         print("%i," % (i+1), end="")
     historic.append(compute_pop_score(curr_pop)[0]) # last best 
     return historic
+
+# %% what actually happens when you run the program 
+if __name__ == "__main__":
+    # TODO : run for lots of generations 
+    # hyperparameters for algorithm to run on
+    size_population = 12 # size of the population each generation
+    best_sample = 5 # how many of the most fit individuals reproduce in a population
+    lucky_few = 3 # number of randomly selected individuals who get to reproduce (for genetic diversity)
+    nb_children = 3 # how many offspring each couple produces
+    nb_gens = 15 #  number of generations until program terminates
+    
+    # genetic algo
+    if ((best_sample + lucky_few) / 2 * nb_children != size_population):
+        	print ("population size not stable")
+    else:
+        print("generations completed:")
+        historic = multi_gen(nb_gens, size_population, best_sample, lucky_few, nb_children)
+        historic = np.array(historic)
+        plt.plot(historic[:,1])
+        plt.title("peak fitness per population")
+        plt.show()
+        reverse_ind = np.argsort(historic[:,1])
+        best_of_gen = historic[reverse_ind]
+        best = best_of_gen[-1][0]
+        # show the best player's play style
+        asteroids.game_loop(isAI=True, nn=best, visualize=True) 
+        
+        # TODO : add a convergence criteria so that it doesn't run unnecessarily long
+        
+    print(time.time() - timeStart)
+    
