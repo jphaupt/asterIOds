@@ -53,28 +53,31 @@ idea : make this an evolved parameter ??
 # %% imports 
 import math
 import numpy as np
+from scipy.special import expit 
 
 # %% constants for evolution
 INITIAL_POP_SIZE = 10
 INPUT_WIDTH = 15 
 OUTPUT_WIDTH = 4
 HIDDEN_WIDTH = 20 # play with this parameter
+NUM_ROCK_IN = 5
 
 # %% activation functions
 # TODO : somehow encode this as something to be mutated
 def linear(x) :
-    return x
+    return x    
     
 def sigmoid(x):
-    fn = lambda x : 1/(1+math.exp(-x))
-    fn = np.vectorize(fn)
-    return fn(x) 
+#    print("sigmoid", x)
+#    fn = lambda y : 1/(1+math.exp(-y)) 
+#    fn = np.vectorize(fn)
+    return expit(x) # TODO : figure out if expit deals with overflow
 
 def tanh(x) :
     return 2*sigmoid(x) - 1
 
 def relu(x) :
-    fn = lambda x : np.max((0, x))
+    fn = lambda y : np.max((0, y))
     fn = np.vectorize(fn) 
     return fn(x) 
 
