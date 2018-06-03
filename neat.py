@@ -48,6 +48,7 @@ idea : make this an evolved parameter ??
 this is a very simple version of a genetic algorithm and at the present 
 implementation does not involve any advanced techniques 
 """
+# TODO : would be nice to figure out how to parallelize this/make it concurrent
 # %% imports 
 #import math
 import numpy as np
@@ -59,15 +60,15 @@ import time
 import matplotlib.pyplot as plt
 
 # %% constants for evolution
-INITIAL_POP_SIZE = 10
-INPUT_WIDTH = 15 
+#INITIAL_POP_SIZE = 10
+INPUT_WIDTH = 9
 OUTPUT_WIDTH = 4
-HIDDEN_WIDTH = 20 # play with this parameter
-NUM_ROCK_IN = 5
-IN_W_MUTATE_PROB = 0.3
-OUT_W_MUTATE_PROB = 0.25
-ACTIVATION_MUTATE_PROB = 0.2
-NB_GAMES_PER_INDIV = 20
+HIDDEN_WIDTH = 10 # play with this parameter
+NUM_ROCK_IN = INPUT_WIDTH // 3
+IN_W_MUTATE_PROB = 0.2
+OUT_W_MUTATE_PROB = 0.2
+ACTIVATION_MUTATE_PROB = 0.15
+NB_GAMES_PER_INDIV = 10
 
 # time it
 timeStart = time.time()
@@ -114,7 +115,9 @@ class Individual() :
         # TODO : decide on normal mean and std. Should this be randomized 
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
-            self.W = [2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
+            #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
+            self.W = [np.random.normal(0, 1, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 1, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -253,12 +256,12 @@ def mutate_W(individual) :
     NOTE this will have to be severely changed when/if implementing proper NEAT
     '''
     if random.random() <= IN_W_MUTATE_PROB : # mutate input layer
-        mu = random.uniform(-0.5, 0.5) # mean 
-        sigma = random.uniform(0.2, 3) # std
+        mu = 0#random.uniform(-0.1, 0.1) # mean 
+        sigma = random.uniform(0.1, 0.5) # std
         individual.W[0] += np.random.normal(mu, sigma, individual.W[0].shape) 
     if random.random() <= OUT_W_MUTATE_PROB : # mutation output layer weights
-        mu = random.uniform(-0.5, 0.5) 
-        sigma = random.uniform(0.2, 3) 
+        mu = 0#random.uniform(-0.1, 0.1) 
+        sigma = random.uniform(0.1, 0.5) 
         individual.W[1] += np.random.normal(mu, sigma, individual.W[1].shape)
         
 def mutate_activation(individual) : 
@@ -312,24 +315,25 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
 #        print(prev_best[1]) # current best performing individual in the population
         print("%i," % (i+1), end="")
     historic.append(compute_pop_score(curr_pop)[0]) # last best 
-    return historic
+    return historic, curr_pop
 
 # %% what actually happens when you run the program 
 if __name__ == "__main__":
     # TODO : run for lots of generations 
     # hyperparameters for algorithm to run on
-    size_population = 100 # size of the population each generation
-    best_sample = 40 # how many of the most fit individuals reproduce in a population
-    lucky_few = 10 # number of randomly selected individuals who get to reproduce (for genetic diversity)
+    size_population = 50 # size of the population each generation
+    best_sample = 20 # how many of the most fit individuals reproduce in a population
+    lucky_few = 5 # number of randomly selected individuals who get to reproduce (for genetic diversity)
     nb_children = 4 # how many offspring each couple produces
-    nb_gens = 50 #  number of generations until program terminates
+    nb_gens = 30 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):
         	print ("population size not stable")
     else:
         print("generations completed:")
-        historic = multi_gen(nb_gens, size_population, best_sample, lucky_few, nb_children)
+        # last population saved in case we want to revisit and continue evolving
+        historic, curr_pop = multi_gen(nb_gens, size_population, best_sample, lucky_few, nb_children)
         historic = np.array(historic)
         plt.plot(historic[:,1])
         plt.title("peak fitness per population")

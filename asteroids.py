@@ -55,7 +55,7 @@ WHITE = (255,255,255)
 GREEN = (0, 255, 0) 
 RED = (255, 0, 0)
 NUM_PER_SPLIT = 3 # number of rocks a rock splits into when hit
-MAX_MISSILES = 5 # limit number of missiles possible to shoot 
+MAX_MISSILES = 3 # limit number of missiles possible to shoot 
 #visualize = False # figure out way to handle this outside file 
 
 
@@ -138,7 +138,7 @@ class Missile(Sprite) :
     def __init__(self, pos, vel, age=0) : 
         Sprite.__init__(self, pos, vel) # TODO : do I include self as param here?  
         self.age = age # missiles disappear after some time, even if it doesn't hit anything
-        self.lifespan = 100 # TODO : decide on number 
+        self.lifespan = 70 # TODO : decide on number 
         
     def update(self) :
         self.age += 1
@@ -331,7 +331,7 @@ def spawn_random_rocks(ship) :
 #    print("Spawning rocks")
     # not sure what number to divide score by 
     # TODO : seems NNs have no idea what to do when there is less than 5 rocks
-    num_to_spawn = int(score/50) + 2#random.randint(1,4) # how many rocks do I spawn? make func tion of score? make random?
+    num_to_spawn = int(score/50) + 1#random.randint(1,4) # how many rocks do I spawn? make func tion of score? make random?
     for i in range(num_to_spawn) : 
         ang = random.uniform(0, 2 * np.pi)
         r = random.uniform(SHIP_HEIGHT * 5, CANVAS_WIDTH - SHIP_HEIGHT * 5)
@@ -383,13 +383,16 @@ def find_neural_input(nn, ship, rocks) :
         square distance divided by CANVAS_WIDTH*CANVAS_HEIGHT/2
         angle / pi (so between -1 and 1)
         size / 3 TODO : improve this one...
+        
+    TODO !!! no idea if the angle input is even working :/
     '''
-    nn_in = np.zeros(nn.nb_input,) 
+    nn_in = np.ones(nn.nb_input,) # TODO : ones or zeros? 
     dist_ind = np.arange(0,neat.NUM_ROCK_IN)*3
     ang_ind = np.arange(0,neat.NUM_ROCK_IN)*3 + 1
     size_ind = np.arange(0,neat.NUM_ROCK_IN)*3 + 2
+    # TODO : initialize big distances?? 
     # initalize distances to a large number (getting NaN with np.inf)
-    nn_in[dist_ind] = 100*np.max((CANVAS_WIDTH, CANVAS_HEIGHT))
+#    nn_in[dist_ind] = 100*np.max((CANVAS_WIDTH, CANVAS_HEIGHT))
     rocks.sort(key = lambda x : dist_sq_bw(x, ship)) 
     if len(rocks) < neat.NUM_ROCK_IN : 
         closest = rocks # TODO : complete implementing input 
@@ -403,12 +406,14 @@ def find_neural_input(nn, ship, rocks) :
         ship2rock = closest[i].pos - ship.pos
         ship2rock[0] %= CANVAS_WIDTH / 2
         ship2rock[1] %= CANVAS_HEIGHT / 2
-        ret_ang = math.atan2(ship2rock[0], ship2rock[1]) - (ship.ang) 
+        ret_ang = math.atan2(ship2rock[0], ship2rock[1]) - (ship.ang-np.pi) 
         
         if ret_ang < -np.pi:
             ret_ang += 2*np.pi
         elif ret_ang > np.pi:
             ret_ang -= 2*np.pi 
+        
+        ret_ang /= np.pi 
 #        nn_in[ang_ind[i]] %= 2*np.pi
 #        nn_in[ang_ind[i]] += np.pi
 #        nn_in[ang_ind[i]] /= 2*np.pi
@@ -442,7 +447,12 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     SPAWN_ROCKS, t = pygame.USEREVENT+1, 30000 # how often (ms) to spawn random rocks
     pygame.time.set_timer(SPAWN_ROCKS, t) 
     player = Ship([CANVAS_WIDTH / 2,CANVAS_HEIGHT / 2], [0.,0.], np.pi)
+    # TODO : make the first rock intentionally attack the player? 
+    # so that the network doesn't just stand in place
+    # TODO : wtf is going on with the angle NN input?! 
     spawn_random_rocks(player)
+    # TODO : delete following line (just for debugging) 
+#    nn = neat.Individual(neat.relu) 
     # TODO : do this in neat.py... somehow
     
     #player.set_ang_vel(np.pi/180)
@@ -454,13 +464,18 @@ def game_loop(isAI=False, nn=None, visualize=True) :
         # TODO make AI play this, obviously not just random input each time... 
         # TODO : different methods... 
     #    tmp_in = np.random.rand(15,)
+    # TODO : restrict to only one action per frame? 
         if isAI :
             nn_in = find_neural_input(nn, player, rocks)
+#        print(nn_in[:2]) 
         ##    print(tmp_in) 
             nn_out = nn.predict(nn_in)  
-        #    # allow several buttons to be pressed at once
+            # allow several buttons to be pressed at once
             ang_vel = 3*np.pi/180
-            if nn_out[0] >= 0.5 : # left
+            # TODO : decide if this is really the best idea... 
+            if nn_out[0] >= 0 and nn_out[1] >= 0:
+                player.set_ang_vel(0) # if you press both, it does nothing
+            elif nn_out[0] >= 0.5 : # left
                 player.set_ang_vel(-ang_vel)
             elif nn_out[1] >= 0.5 : # right
                 player.set_ang_vel(ang_vel)
