@@ -61,14 +61,15 @@ import matplotlib.pyplot as plt
 
 # %% constants for evolution
 #INITIAL_POP_SIZE = 10
-NUM_ROCK_IN = 4
-INPUT_WIDTH = NUM_ROCK_IN * 3
+NUM_ROCK_IN = 9
+NUM_IN_PER_ROCK = 2
+INPUT_WIDTH = NUM_ROCK_IN * NUM_IN_PER_ROCK + 1 # one for # missiles fired 
 OUTPUT_WIDTH = 4
-HIDDEN_WIDTH = 15 # play with this parameter
-IN_W_MUTATE_PROB = 0.25
-OUT_W_MUTATE_PROB = 0.25
-ACTIVATION_MUTATE_PROB = 0.15
-NB_GAMES_PER_INDIV = 10
+HIDDEN_WIDTH = 40 # play with this parameter
+IN_W_MUTATE_PROB = 0.2
+OUT_W_MUTATE_PROB = 0.2
+ACTIVATION_MUTATE_PROB = 0.1
+NB_GAMES_PER_INDIV = 1 # TODO : increase, significantly 
 
 # time it
 timeStart = time.time()
@@ -95,7 +96,8 @@ def relu(x) :
 
 # TODO : other activation functions to evolve from! 
     
-activations = [linear, sigmoid, tanh, relu]
+activations = [linear, sigmoid, tanh, relu, np.sin]  
+#activations = [relu] # check 100% relu performance
 
 # %% 
 class Individual() :
@@ -116,8 +118,8 @@ class Individual() :
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
             #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
-            self.W = [np.random.normal(0, 0.8, (nb_hidden, nb_input+1)), 
-                      np.random.normal(0, 0.8, (nb_output, nb_hidden+1))]
+            self.W = [np.random.normal(0, 3, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 3, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -142,6 +144,7 @@ def fitness(indiv) :
     fitness is simply the score from asteroids game
     TODO : average a few games to reduce randomly succeeding ? 
     currently averaging five games
+    TODO : should I make this more complicated? time alive? # times cleared?
     '''
     acc = 0
     for i in range(NB_GAMES_PER_INDIV) : 
@@ -258,11 +261,11 @@ def mutate_W(individual) :
     '''
     if random.random() <= IN_W_MUTATE_PROB : # mutate input layer
         mu = 0#random.uniform(-0.1, 0.1) # mean 
-        sigma = random.uniform(0.05, 0.3) # std
+        sigma = random.uniform(0.1, 1) # std
         individual.W[0] += np.random.normal(mu, sigma, individual.W[0].shape) 
     if random.random() <= OUT_W_MUTATE_PROB : # mutation output layer weights
         mu = 0#random.uniform(-0.1, 0.1) 
-        sigma = random.uniform(0.05, 0.3) 
+        sigma = random.uniform(0.1, 1) 
         individual.W[1] += np.random.normal(mu, sigma, individual.W[1].shape)
         
 def mutate_activation(individual) : 
@@ -314,7 +317,7 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
         curr_pop, prev_best = next_generation(curr_pop, nb_children, best_sample, lucky_few)
         historic.append(prev_best) 
 #        print(prev_best[1]) # current best performing individual in the population
-        print("%i," % (i+1), end="")
+        print("%i(%i)," % ((i+1), prev_best[1]), end="")
     historic.append(compute_pop_score(curr_pop)[0]) # last best 
     return historic, curr_pop
 
@@ -322,11 +325,11 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
 if __name__ == "__main__":
     # TODO : run for lots of generations 
     # hyperparameters for algorithm to run on
-    size_population = 50 # size of the population each generation
-    best_sample = 20 # how many of the most fit individuals reproduce in a population
-    lucky_few = 5 # number of randomly selected individuals who get to reproduce (for genetic diversity)
+    size_population = 200 # size of the population each generation
+    best_sample = 85 # how many of the most fit individuals reproduce in a population
+    lucky_few = 15 # number of randomly selected individuals who get to reproduce (for genetic diversity)
     nb_children = 4 # how many offspring each couple produces
-    nb_gens = 30 #  number of generations until program terminates
+    nb_gens = 100 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):
@@ -346,6 +349,8 @@ if __name__ == "__main__":
         asteroids.game_loop(isAI=True, nn=best, visualize=True) 
         
         # TODO : add a convergence criteria so that it doesn't run unnecessarily long
+        # TODO : might be fun to automatically run best of generation after each iteration
+        # might slow down the algo though...
         
     print(time.time() - timeStart)
     

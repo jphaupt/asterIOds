@@ -39,6 +39,7 @@ import random
 import math
 import pygame.locals as pgl
 import neat
+#import sys, os
 
 
 
@@ -54,11 +55,14 @@ BLACK = (0,0,0)
 WHITE = (255,255,255) 
 GREEN = (0, 255, 0) 
 RED = (255, 0, 0)
+BLUE = (0, 0, 255) 
 NUM_PER_SPLIT = 3 # number of rocks a rock splits into when hit
-MAX_MISSILES = 4 # limit number of missiles possible to shoot 
+MAX_MISSILES = 3 # limit number of missiles possible to shoot 
 #visualize = False # figure out way to handle this outside file 
+SCORE_FOR_ROCK = 50
+SCORE_FOR_CLEARING = 10
 
-
+seed = 7 # for reproducibility (i.e. training) 
 
 # %% classes for objects
 class Sprite : 
@@ -147,12 +151,13 @@ class Missile(Sprite) :
 #        print("STUB")
     # TODO stub 
 # %% functions
-def collide_missile_rock(rocks, missiles) :
+def collide_missile_rock(rocks, missiles, score) :
     '''
     check collision of any rock with any missile and update (decrease size) 
     rock and delete missile if true
     returns number of hits 
     '''
+#    global score
     hits = 0 
     for rock in rocks :
         for missile in missiles :
@@ -176,13 +181,14 @@ def collide_missile_rock(rocks, missiles) :
                         rocks.extend(new_rocks) 
                         missiles.remove(missile)
                         hits += 1
+#                        print("hit!") 
                     else : 
                         rocks.remove(rock) 
                         missiles.remove(missile)
                         hits += 1 
                         if len(rocks) == 0:
-                            hits += 3 # 3 bonus points for clearing level... Why not?
-                            spawn_random_rocks(player) # neeeext
+                            hits += SCORE_FOR_CLEARING # bonus points for clearing level... Why not?
+                            spawn_random_rocks(player, score) # neeeext
                             pygame.time.set_timer(SPAWN_ROCKS, t) 
     return hits
     pass 
@@ -199,6 +205,7 @@ def collide_ship_rock(ship, rocks) :
     # get ship points, and check if they are in the circle 
     # this is not the same as checking triangle collision (just a temp fix)
     # also checking cockpit, just for good measure
+#    print('check collision')
     rot = rotate_mat(ship.ang)
     pts2check = [ship.pos-rot.dot(np.array([SHIP_WIDTH//2, SHIP_HEIGHT//2])), 
                                  ship.pos-rot.dot(np.array([-SHIP_WIDTH//2, SHIP_HEIGHT//2])), 
@@ -212,8 +219,10 @@ def collide_ship_rock(ship, rocks) :
     return False
 
 # draw on canvas (also updates and does collision check!)
-def draw(canvas, visualize=True) :
-    global score, lives
+def draw(canvas, score, visualize=True) :
+    global lives
+#    print('in draw')
+#    score = 0
     if visualize :
 #        print(visualize)
         canvas.fill(BLACK)
@@ -246,7 +255,7 @@ def draw(canvas, visualize=True) :
             pygame.draw.line(canvas, WHITE, player.pos, player.pos)
         
         # check rock-missile collision
-        hits = collide_missile_rock(rocks, missiles) 
+        hits = collide_missile_rock(rocks, missiles, score) 
         # update score accordinly
         if hits > 0:
             score += hits 
@@ -275,6 +284,8 @@ def draw(canvas, visualize=True) :
 
     if lives < 1:
         game_over(visualize=visualize)
+        
+    return score
     
 def rotate_mat(angle) :
     rot = np.array([[np.cos(angle), -np.sin(angle)],
@@ -324,14 +335,15 @@ def game_over(visualize=True) :
     is_running = False # not sure if I like this
     # TODO : determine how long to keep on, what to do after
 
-def spawn_random_rocks(ship) :
-    global score
+def spawn_random_rocks(ship, score) :
+#    global score
     # TODO : make dependent on score? spawn several at once, random locations
     # but not on top of the ship
 #    print("Spawning rocks")
     # not sure what number to divide score by 
     # TODO : seems NNs have no idea what to do when there is less than 5 rocks
-    num_to_spawn = int(score/50) + 1#random.randint(1,4) # how many rocks do I spawn? make func tion of score? make random?
+    # how many rocks do I spawn? make func tion of score? make random?
+    num_to_spawn = int(score/SCORE_FOR_ROCK) + 1#random.randint(1,4) 
     for i in range(num_to_spawn) : 
         ang = random.uniform(0, 2 * np.pi)
         r = random.uniform(SHIP_HEIGHT * 5, CANVAS_WIDTH - SHIP_HEIGHT * 5)
@@ -343,17 +355,17 @@ def spawn_random_rocks(ship) :
 
 def closest_vect(x,y) : 
     # TODO : not 100% sure if this is working as intended
-    # I don't really like the way the angle works...
+    # seems to be fine though! I think I fixed it 
     dx = x.pos[0] - y.pos[0]
     if dx > CANVAS_WIDTH/2:
-        dx = CANVAS_WIDTH - dx
+        dx = dx - CANVAS_WIDTH 
     elif dx < -CANVAS_WIDTH/2:
-        dx = dx - CANVAS_WIDTH
+        dx = CANVAS_WIDTH - dx
     dy = x.pos[1] - y.pos[1]
     if dy > CANVAS_HEIGHT/2:
-        dy = CANVAS_HEIGHT - dy
-    elif dy < -CANVAS_HEIGHT/2:
         dy = dy - CANVAS_HEIGHT
+    elif dy < -CANVAS_HEIGHT/2:
+        dy = CANVAS_HEIGHT - dy
     return [dx,dy]
 
 def dist_sq_bw(x, y) :
@@ -379,7 +391,7 @@ def dist_sq_bw(x, y) :
 #    print(ret_ang)
 #    return ret_ang
 
-def find_neural_input(nn, ship, rocks) :
+def find_neural_input(nn, ship, rocks, visualize) :
     '''
     determine neural network input : 
         size and location (polar coords) of 5 closest rocks
@@ -399,9 +411,10 @@ def find_neural_input(nn, ship, rocks) :
     TODO !!! no idea if the angle input is even working :/
     '''
     nn_in = np.ones(nn.nb_input,) # TODO : ones or zeros? 
-    dist_ind = np.arange(0,neat.NUM_ROCK_IN)*3
-    ang_ind = np.arange(0,neat.NUM_ROCK_IN)*3 + 1
-    size_ind = np.arange(0,neat.NUM_ROCK_IN)*3 + 2
+    dist_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK
+    ang_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 1
+    # TODO : decide whether or not to keep the size as input 
+#    size_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 2
     # TODO : initialize big distances?? 
     # initalize distances to a large number (getting NaN with np.inf)
 #    nn_in[dist_ind] = 100*np.max((CANVAS_WIDTH, CANVAS_HEIGHT))
@@ -411,38 +424,48 @@ def find_neural_input(nn, ship, rocks) :
     else :
         closest = rocks[:neat.NUM_ROCK_IN]
     for i in range(len(closest)) :
-        nn_in[dist_ind[i]] = dist_sq_bw(closest[i], ship) / (CANVAS_WIDTH*CANVAS_HEIGHT/4) 
+#        nn_in[dist_ind[i]] = dist_sq_bw(closest[i], ship) / (CANVAS_WIDTH*CANVAS_HEIGHT/4) # TODO : uncomment after debug
+        
+        r_sq = dist_sq_bw(closest[i], ship)
+#        ang = (nn_in[1] + player.ang)
+#        pygame.draw.line(canvas, BLUE, player.pos, player.pos + r*angle_to_vector(ang))
+        nn_in[dist_ind[i]] = r_sq / (CANVAS_WIDTH * CANVAS_HEIGHT / 4) # normalize
 #        print(nn_in[dist_ind[i]]) 
         ship2rock = closest_vect(closest[i], ship)
         # rotate by ship.ang 
         # TODO : think I'm messing this up
 #        ship2rock[0] %= CANVAS_WIDTH / 2
 #        ship2rock[1] %= CANVAS_HEIGHT / 2
-        rot = rotate_mat(-ship.ang)
+        rot = rotate_mat(-ship.ang+np.pi)
         ship2rock = rot.dot(ship2rock) 
         # TODO : not sure if this is a good way to get polar coords
 #        ship2rock = closest[i].pos - ship.pos
 #        ship2rock[0] %= CANVAS_WIDTH / 2
 #        ship2rock[1] %= CANVAS_HEIGHT / 2
-        ret_ang = math.atan2(ship2rock[0], ship2rock[1]) # - (ship.ang-np.pi) 
+        ret_ang = math.atan2(ship2rock[0], -ship2rock[1]) # - (ship.ang-np.pi) 
+        if visualize and is_running:    
+            r = np.sqrt(r_sq) 
+            pygame.draw.line(canvas, BLUE, player.pos, player.pos + r*angle_to_vector(ret_ang+ship.ang)) 
         
 #        if ret_ang < -np.pi:
 #            ret_ang += 2*np.pi
 #        elif ret_ang > np.pi:
 #            ret_ang -= 2*np.pi 
         
-        ret_ang /= np.pi 
-#        nn_in[ang_ind[i]] %= 2*np.pi
-#        nn_in[ang_ind[i]] += np.pi
-#        nn_in[ang_ind[i]] /= 2*np.pi
+        ret_ang /= np.pi  
         nn_in[ang_ind[i]] = ret_ang
 #        print(nn_in[ang_ind[i]])
-        nn_in[size_ind[i]] = closest[i].size / 3
+#        nn_in[size_ind[i]] = closest[i].size / 3
+    if visualize and is_running: 
+        pygame.draw.line(canvas, WHITE, player.pos, player.pos) 
+    nn_in[-1] = len(missiles) / MAX_MISSILES
     return nn_in
 
 # %% game loop
 def game_loop(isAI=False, nn=None, visualize=True) :
-    global canvas, player, time, lives, missiles, rocks, score, is_running, SPAWN_ROCKS, t
+    global canvas, player, time, lives, missiles, rocks, is_running, SPAWN_ROCKS, t
+#    if isAI : 
+#        random.seed(seed) 
     pygame.init()
     if visualize :
         canvas = pygame.display.set_mode((CANVAS_WIDTH,CANVAS_HEIGHT))
@@ -471,64 +494,85 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     rocks.append(first_rock) 
     second_rock = Rock([CANVAS_WIDTH, 0.], [-1., -1.]) 
     rocks.append(second_rock) 
+    spawn_random_rocks(player, score) 
     # TODO : wtf is going on with the angle NN input?! 
-#    spawn_random_rocks(player)
+#    spawn_random_rocks(player, score)
     # TODO : delete following line (just for debugging) 
 #    nn = neat.Individual(neat.relu) 
     # TODO : do this in neat.py... somehow
-    
+#    tmp = False
     #player.set_ang_vel(np.pi/180)
     while is_running or visualize :
 #        print('in loop')
-        draw(canvas, visualize=visualize)
-        
+        tmp_score = score
+        score = draw(canvas, score, visualize=visualize)
+        if tmp_score < score :  
+            print(score) 
+#        if tmp :
+#            print('should not be here...') 
         # AI player 
         # TODO make AI play this, obviously not just random input each time... 
         # TODO : different methods... 
     #    tmp_in = np.random.rand(15,)
     # TODO : restrict to only one action per frame? 
+#        nn_in = find_neural_input(nn, player, rocks, visualize)
+#        print(nn_in[:2])
         if isAI :
-            nn_in = find_neural_input(nn, player, rocks)
-#        print(nn_in[:2]) 
-        ##    print(tmp_in) 
+            nn_in = find_neural_input(nn, player, rocks, visualize)
+                 
+            ##    print(tmp_in) 
             nn_out = nn.predict(nn_in)  
             # allow several buttons to be pressed at once
             ang_vel = 3*np.pi/180
             # TODO : decide if this is really the best idea... 
 #            if nn_out[0] >= 0 and nn_out[1] >= 0:
 #                player.set_ang_vel(0) # if you press both, it does nothing
+#            print(nn_out) 
             if nn_out[0] >= 0.5 and nn_out[0] > nn_out[1] : # left
+#                    print('left')
                 player.set_ang_vel(-ang_vel)
             elif nn_out[1] >= 0.5 and nn_out[1] > nn_out[0] : # right
+#                    print('right')
                 player.set_ang_vel(ang_vel)
             else :
                 player.set_ang_vel(0) 
             if nn_out[2] >= 0.5 : # forward
+#                    print('thrust') 
                 player.set_thrust(True)
             else : 
                 player.set_thrust(False)
             if nn_out[3] >= 0.5 : # should I have an else here?? 
+#                    print('shoot')
                 player.shoot() 
-        #    print(tmp_out)
-        #    print(player.pos) 
+            #    print(tmp_out)
+            #    print(player.pos) 
         
-        
-    #    
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if not isAI :
-                if event.type == pygame.KEYDOWN:
-                    keydown(event) 
-                elif event.type == pygame.KEYUP: 
-                    keyup(event) 
-            if event.type == SPAWN_ROCKS :
-                spawn_random_rocks(player)
-                
         if visualize :
             pygame.display.update()
             # limit FPS
             clock.tick(60) # not sure if worked 
+    #    
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                # TODO : figure out why closing this gives errors 
+#                print(score) 
+#                if visualize : 
+#                    pygame.display.quit()
+#                    print('here') 
+                pygame.quit()
+#                os._exit(0) 
+#                tmp = True
+                # TODO : figure out why it keeps giving an error 
+#                quit(keep_kernel=True)
+            elif not isAI :
+                if event.type == pygame.KEYDOWN:
+                    keydown(event) 
+                elif event.type == pygame.KEYUP: 
+                    keyup(event) 
+            elif event.type == SPAWN_ROCKS :
+                spawn_random_rocks(player, score)
+                
+        
     
         if not visualize :
             if not is_running :
@@ -537,5 +581,8 @@ def game_loop(isAI=False, nn=None, visualize=True) :
             
 # %% if you just run the file
 if __name__ == "__main__":
-     
-    game_loop()
+#    try :  
+    performance = game_loop()
+    print(performance)
+#    except SystemExit : 
+#        pass
