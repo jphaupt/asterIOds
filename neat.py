@@ -61,12 +61,12 @@ import matplotlib.pyplot as plt
 
 # %% constants for evolution
 #INITIAL_POP_SIZE = 10
-INPUT_WIDTH = 9
+NUM_ROCK_IN = 4
+INPUT_WIDTH = NUM_ROCK_IN * 3
 OUTPUT_WIDTH = 4
-HIDDEN_WIDTH = 10 # play with this parameter
-NUM_ROCK_IN = INPUT_WIDTH // 3
-IN_W_MUTATE_PROB = 0.2
-OUT_W_MUTATE_PROB = 0.2
+HIDDEN_WIDTH = 15 # play with this parameter
+IN_W_MUTATE_PROB = 0.25
+OUT_W_MUTATE_PROB = 0.25
 ACTIVATION_MUTATE_PROB = 0.15
 NB_GAMES_PER_INDIV = 10
 
@@ -116,8 +116,8 @@ class Individual() :
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
             #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
-            self.W = [np.random.normal(0, 1, (nb_hidden, nb_input+1)), 
-                      np.random.normal(0, 1, (nb_output, nb_hidden+1))]
+            self.W = [np.random.normal(0, 0.8, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 0.8, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -209,7 +209,8 @@ def create_child(individual1, individual2) :
     I am using a uniform crossover, but am not confident if this is the best
     TODO : improve baby-making algorithm
     
-    this function is also known as crossover, recombination, or sexy time
+    this function is also known as crossover, recombination, breeding, 
+    or sexy time
     
     this function will have to be significantly changed when/if implementing
     "true" NEAT (i.e. neuron topology, not just weights, change) 
@@ -257,11 +258,11 @@ def mutate_W(individual) :
     '''
     if random.random() <= IN_W_MUTATE_PROB : # mutate input layer
         mu = 0#random.uniform(-0.1, 0.1) # mean 
-        sigma = random.uniform(0.1, 0.5) # std
+        sigma = random.uniform(0.05, 0.3) # std
         individual.W[0] += np.random.normal(mu, sigma, individual.W[0].shape) 
     if random.random() <= OUT_W_MUTATE_PROB : # mutation output layer weights
         mu = 0#random.uniform(-0.1, 0.1) 
-        sigma = random.uniform(0.1, 0.5) 
+        sigma = random.uniform(0.05, 0.3) 
         individual.W[1] += np.random.normal(mu, sigma, individual.W[1].shape)
         
 def mutate_activation(individual) : 

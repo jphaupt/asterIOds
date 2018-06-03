@@ -48,14 +48,14 @@ import neat
 CANVAS_HEIGHT = 600
 CANVAS_WIDTH = 600
 MIN_ROCK_RADIUS = 15
-SHIP_WIDTH = 6 * 2
-SHIP_HEIGHT = 10 * 2
+SHIP_WIDTH = 6 * 3 # TODO : still not sure about ship size
+SHIP_HEIGHT = 10 * 3
 BLACK = (0,0,0)
 WHITE = (255,255,255) 
 GREEN = (0, 255, 0) 
 RED = (255, 0, 0)
 NUM_PER_SPLIT = 3 # number of rocks a rock splits into when hit
-MAX_MISSILES = 3 # limit number of missiles possible to shoot 
+MAX_MISSILES = 4 # limit number of missiles possible to shoot 
 #visualize = False # figure out way to handle this outside file 
 
 
@@ -138,7 +138,7 @@ class Missile(Sprite) :
     def __init__(self, pos, vel, age=0) : 
         Sprite.__init__(self, pos, vel) # TODO : do I include self as param here?  
         self.age = age # missiles disappear after some time, even if it doesn't hit anything
-        self.lifespan = 70 # TODO : decide on number 
+        self.lifespan = 60 # TODO : decide on number 
         
     def update(self) :
         self.age += 1
@@ -342,12 +342,18 @@ def spawn_random_rocks(ship) :
         rocks.append(rock) 
 
 def closest_vect(x,y) : 
-    dx = abs(x.pos[0] - y.pos[0])
+    # TODO : not 100% sure if this is working as intended
+    # I don't really like the way the angle works...
+    dx = x.pos[0] - y.pos[0]
     if dx > CANVAS_WIDTH/2:
         dx = CANVAS_WIDTH - dx
-    dy = abs(x.pos[1] - y.pos[1]) 
+    elif dx < -CANVAS_WIDTH/2:
+        dx = dx - CANVAS_WIDTH
+    dy = x.pos[1] - y.pos[1]
     if dy > CANVAS_HEIGHT/2:
         dy = CANVAS_HEIGHT - dy
+    elif dy < -CANVAS_HEIGHT/2:
+        dy = dy - CANVAS_HEIGHT
     return [dx,dy]
 
 def dist_sq_bw(x, y) :
@@ -355,6 +361,12 @@ def dist_sq_bw(x, y) :
     calculate square distance between two sprites
     '''
     dx, dy = closest_vect(x,y) 
+#    dx = abs(dx)
+#    dy = abs(dy)
+#    if dx > CANVAS_WIDTH/2:
+#        dx = CANVAS_WIDTH - dx
+#    if dy > CANVAS_HEIGHT/2:
+#        dy = CANVAS_HEIGHT - dy
     return dx**2 + dy**2
 
 #def ang_bw(x, y) :
@@ -401,17 +413,23 @@ def find_neural_input(nn, ship, rocks) :
     for i in range(len(closest)) :
         nn_in[dist_ind[i]] = dist_sq_bw(closest[i], ship) / (CANVAS_WIDTH*CANVAS_HEIGHT/4) 
 #        print(nn_in[dist_ind[i]]) 
-#        ship2rock = closest_vect(closest[i], ship)
+        ship2rock = closest_vect(closest[i], ship)
+        # rotate by ship.ang 
+        # TODO : think I'm messing this up
+#        ship2rock[0] %= CANVAS_WIDTH / 2
+#        ship2rock[1] %= CANVAS_HEIGHT / 2
+        rot = rotate_mat(-ship.ang)
+        ship2rock = rot.dot(ship2rock) 
         # TODO : not sure if this is a good way to get polar coords
-        ship2rock = closest[i].pos - ship.pos
-        ship2rock[0] %= CANVAS_WIDTH / 2
-        ship2rock[1] %= CANVAS_HEIGHT / 2
-        ret_ang = math.atan2(ship2rock[0], ship2rock[1]) - (ship.ang-np.pi) 
+#        ship2rock = closest[i].pos - ship.pos
+#        ship2rock[0] %= CANVAS_WIDTH / 2
+#        ship2rock[1] %= CANVAS_HEIGHT / 2
+        ret_ang = math.atan2(ship2rock[0], ship2rock[1]) # - (ship.ang-np.pi) 
         
-        if ret_ang < -np.pi:
-            ret_ang += 2*np.pi
-        elif ret_ang > np.pi:
-            ret_ang -= 2*np.pi 
+#        if ret_ang < -np.pi:
+#            ret_ang += 2*np.pi
+#        elif ret_ang > np.pi:
+#            ret_ang -= 2*np.pi 
         
         ret_ang /= np.pi 
 #        nn_in[ang_ind[i]] %= 2*np.pi
@@ -449,8 +467,12 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     player = Ship([CANVAS_WIDTH / 2,CANVAS_HEIGHT / 2], [0.,0.], np.pi)
     # TODO : make the first rock intentionally attack the player? 
     # so that the network doesn't just stand in place
+    first_rock = Rock([0., CANVAS_HEIGHT/2], [1., 0.]) 
+    rocks.append(first_rock) 
+    second_rock = Rock([CANVAS_WIDTH, 0.], [-1., -1.]) 
+    rocks.append(second_rock) 
     # TODO : wtf is going on with the angle NN input?! 
-    spawn_random_rocks(player)
+#    spawn_random_rocks(player)
     # TODO : delete following line (just for debugging) 
 #    nn = neat.Individual(neat.relu) 
     # TODO : do this in neat.py... somehow
@@ -473,11 +495,11 @@ def game_loop(isAI=False, nn=None, visualize=True) :
             # allow several buttons to be pressed at once
             ang_vel = 3*np.pi/180
             # TODO : decide if this is really the best idea... 
-            if nn_out[0] >= 0 and nn_out[1] >= 0:
-                player.set_ang_vel(0) # if you press both, it does nothing
-            elif nn_out[0] >= 0.5 : # left
+#            if nn_out[0] >= 0 and nn_out[1] >= 0:
+#                player.set_ang_vel(0) # if you press both, it does nothing
+            if nn_out[0] >= 0.5 and nn_out[0] > nn_out[1] : # left
                 player.set_ang_vel(-ang_vel)
-            elif nn_out[1] >= 0.5 : # right
+            elif nn_out[1] >= 0.5 and nn_out[1] > nn_out[0] : # right
                 player.set_ang_vel(ang_vel)
             else :
                 player.set_ang_vel(0) 
