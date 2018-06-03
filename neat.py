@@ -49,6 +49,7 @@ this is a very simple version of a genetic algorithm and at the present
 implementation does not involve any advanced techniques 
 """
 # TODO : would be nice to figure out how to parallelize this/make it concurrent
+# TODO : crazy idea : try weight sharing?! 
 # %% imports 
 #import math
 import numpy as np
@@ -68,7 +69,7 @@ OUTPUT_WIDTH = 4
 HIDDEN_WIDTH = 40 # play with this parameter
 IN_W_MUTATE_PROB = 0.2
 OUT_W_MUTATE_PROB = 0.2
-ACTIVATION_MUTATE_PROB = 0.1
+ACTIVATION_MUTATE_PROB = 0.05
 NB_GAMES_PER_INDIV = 1 # TODO : increase, significantly 
 
 # time it
@@ -97,7 +98,7 @@ def relu(x) :
 # TODO : other activation functions to evolve from! 
     
 activations = [linear, sigmoid, tanh, relu, np.sin]  
-#activations = [relu] # check 100% relu performance
+#activations = [relu] # check 100% relu performance - I suspect it's the best anyway
 
 # %% 
 class Individual() :
@@ -118,8 +119,8 @@ class Individual() :
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
             #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
-            self.W = [np.random.normal(0, 3, (nb_hidden, nb_input+1)), 
-                      np.random.normal(0, 3, (nb_output, nb_hidden+1))]
+            self.W = [np.random.normal(0, 2, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 2, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -181,14 +182,16 @@ def compute_pop_score(population) :
     returns sorted list of individuals and their fitness
     '''
     # TODO : preallocation...
-    pop_score = {}
+#    pop_score = {}
 #    print(population)
     for indiv in population :
 #        print("in loop!")
-        pop_score[indiv] = fitness(indiv)
+#        pop_score[indiv] = fitness(indiv)
+        indiv.fitness = fitness(indiv)
     # highest score to lowest
 #    print("left loop!")
-    return sorted(pop_score.items(), key = operator.itemgetter(1), reverse=True)
+#    return sorted(pop_score.items(), key = operator.itemgetter(1), reverse=True)
+    return sorted(population, key = fitness, reverse=True)
 
 def select_from_pop(population_sorted, best_sample, lucky_few) :
     '''
@@ -198,9 +201,9 @@ def select_from_pop(population_sorted, best_sample, lucky_few) :
     # TODO : again, preallocation of data
     next_gen = []
     for i in range(best_sample):
-        next_gen.append(population_sorted[i][0])
+        next_gen.append(population_sorted[i])
     for i in range(lucky_few):
-        next_gen.append(random.choice(population_sorted)[0])
+        next_gen.append(random.choice(population_sorted))
     random.shuffle(next_gen) # important detail
     return next_gen
 
@@ -219,22 +222,36 @@ def create_child(individual1, individual2) :
     "true" NEAT (i.e. neuron topology, not just weights, change) 
     currently assumes that the two individuals having sexy time have the exact
     same neural architecture (well, except for hidden layer activation func)
+    
+    TODO : make probability of taking a certain allele proportional to the 
+    parent's overall fitness? Done... not 100% on if it's the best idea
+    but eh, I like the concept 
     '''
     # TODO : find a more efficient way to run this? I suspect this is a 
     # bottleneck for run time...
     W1 = individual1.W
     W2 = individual2.W
-    child = Individual(random.choice([individual1.activation, individual2.activation]), 
-                       rand_weights=False)
+    BETA = 5 # aggressive Laplace smoothing
+    prob1 = (individual1.fitness + BETA) / (individual1.fitness + individual2.fitness + 2*BETA) 
+    if random.random() <= prob1 : # = case... ? 
+        child = Individual(individual1.activation, rand_weights=False)
+    else : 
+        child = Individual(individual2.activation, rand_weights=False)
     a, b = child.W[0].shape # assume == W1[0].shape == W2[0].shape
     for i in range(a) :
         for j in range(b) :
-            child.W[0][i][j] = random.choice([W1[0][i][j], W2[0][i][j]]) 
+            if random.random() <= prob1 :
+                child.W[0][i][j] = W1[0][i][j]
+            else : 
+                child.W[0][i][j] = W2[0][i][j]
     # repeat for output layer...
     a, b = child.W[1].shape # assume == W1[1].shape == W2[1].shape
     for i in range(a) :
         for j in range(b) :
-            child.W[1][i][j] = random.choice([W1[1][i][j], W2[1][i][j]]) 
+            if random.random() <= prob1 :
+                child.W[1][i][j] = W1[1][i][j]
+            else : 
+                child.W[1][i][j] = W2[1][i][j]
             
     return child
 
@@ -256,16 +273,16 @@ def mutate_W(individual) :
     mutate the given individual's weights 
     TODO : figure out a more appropriate way to handle mutation 
     (at current, I just add a random weight matrix) 
-    TODO : currently, mutation is extremely harsh (change??) 
+    TODO : play with std parameters
     NOTE this will have to be severely changed when/if implementing proper NEAT
     '''
     if random.random() <= IN_W_MUTATE_PROB : # mutate input layer
         mu = 0#random.uniform(-0.1, 0.1) # mean 
-        sigma = random.uniform(0.1, 1) # std
+        sigma = random.uniform(0.05, 0.3) # std
         individual.W[0] += np.random.normal(mu, sigma, individual.W[0].shape) 
     if random.random() <= OUT_W_MUTATE_PROB : # mutation output layer weights
         mu = 0#random.uniform(-0.1, 0.1) 
-        sigma = random.uniform(0.1, 1) 
+        sigma = random.uniform(0.05, 0.3) 
         individual.W[1] += np.random.normal(mu, sigma, individual.W[1].shape)
         
 def mutate_activation(individual) : 
@@ -308,7 +325,6 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
     returns a list of the best performing individual per generation
     '''
     # TODO : memory preallocation
-    # TODO : implement from template 
     historic = []
     curr_pop = generate_initial_pop(size_pop)
 #    historic.append(prev_best)
@@ -317,7 +333,7 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
         curr_pop, prev_best = next_generation(curr_pop, nb_children, best_sample, lucky_few)
         historic.append(prev_best) 
 #        print(prev_best[1]) # current best performing individual in the population
-        print("%i(%i)," % ((i+1), prev_best[1]), end="")
+        print("%i(%i)," % ((i+1), prev_best.fitness), end="")
     historic.append(compute_pop_score(curr_pop)[0]) # last best 
     return historic, curr_pop
 
@@ -329,7 +345,7 @@ if __name__ == "__main__":
     best_sample = 85 # how many of the most fit individuals reproduce in a population
     lucky_few = 15 # number of randomly selected individuals who get to reproduce (for genetic diversity)
     nb_children = 4 # how many offspring each couple produces
-    nb_gens = 100 #  number of generations until program terminates
+    nb_gens = 200 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):
@@ -339,12 +355,15 @@ if __name__ == "__main__":
         # last population saved in case we want to revisit and continue evolving
         historic, curr_pop = multi_gen(nb_gens, size_population, best_sample, lucky_few, nb_children)
         historic = np.array(historic)
-        plt.plot(historic[:,1])
+        historic_fitness = np.zeros((len(historic),))
+        for i in range(len(historic)) :
+            historic_fitness = historic[i].fitness
+        plt.plot(historic_fitness)
         plt.title("peak fitness per population")
         plt.show()
-        reverse_ind = np.argsort(historic[:,1])
+        reverse_ind = np.argsort(historic_fitness)
         best_of_gen = historic[reverse_ind]
-        best = best_of_gen[-1][0]
+        best = best_of_gen[-1]
         # show the best player's play style
         asteroids.game_loop(isAI=True, nn=best, visualize=True) 
         

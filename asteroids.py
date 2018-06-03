@@ -410,7 +410,7 @@ def find_neural_input(nn, ship, rocks, visualize) :
         
     TODO !!! no idea if the angle input is even working :/
     '''
-    nn_in = np.ones(nn.nb_input,) # TODO : ones or zeros? 
+    nn_in = np.zeros(nn.nb_input,) # TODO : ones or zeros? Something else? 
     dist_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK
     ang_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 1
     # TODO : decide whether or not to keep the size as input 
@@ -464,8 +464,8 @@ def find_neural_input(nn, ship, rocks, visualize) :
 # %% game loop
 def game_loop(isAI=False, nn=None, visualize=True) :
     global canvas, player, time, lives, missiles, rocks, is_running, SPAWN_ROCKS, t
-#    if isAI : 
-#        random.seed(seed) 
+    if isAI : 
+        random.seed(seed) 
     pygame.init()
     if visualize :
         canvas = pygame.display.set_mode((CANVAS_WIDTH,CANVAS_HEIGHT))
@@ -504,10 +504,10 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     #player.set_ang_vel(np.pi/180)
     while is_running or visualize :
 #        print('in loop')
-        tmp_score = score
+#        tmp_score = score
         score = draw(canvas, score, visualize=visualize)
-        if tmp_score < score :  
-            print(score) 
+#        if tmp_score < score :  
+#            print(score) 
 #        if tmp :
 #            print('should not be here...') 
         # AI player 
