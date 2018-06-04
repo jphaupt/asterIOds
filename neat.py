@@ -47,6 +47,8 @@ idea : make this an evolved parameter ??
 
 this is a very simple version of a genetic algorithm and at the present 
 implementation does not involve any advanced techniques 
+
+TODO : dare I say... MORE LAYERS ?!
 """
 # TODO : would be nice to figure out how to parallelize this/make it concurrent
 # TODO : crazy idea : try weight sharing?! 
@@ -56,20 +58,20 @@ import numpy as np
 from scipy.special import expit 
 import asteroids
 import random
-import operator
+#import operator
 import time 
 import matplotlib.pyplot as plt
 
 # %% constants for evolution
 #INITIAL_POP_SIZE = 10
 NUM_ROCK_IN = 9
-NUM_IN_PER_ROCK = 2
+NUM_IN_PER_ROCK = 2 # TODO ? input size of rock 
 INPUT_WIDTH = NUM_ROCK_IN * NUM_IN_PER_ROCK + 1 # one for # missiles fired 
 OUTPUT_WIDTH = 4
 HIDDEN_WIDTH = 40 # play with this parameter
-IN_W_MUTATE_PROB = 0.2
-OUT_W_MUTATE_PROB = 0.2
-ACTIVATION_MUTATE_PROB = 0.05
+IN_W_MUTATE_PROB = 0.25
+OUT_W_MUTATE_PROB = 0.25
+ACTIVATION_MUTATE_PROB = 0.1
 NB_GAMES_PER_INDIV = 1 # TODO : increase, significantly 
 
 # time it
@@ -97,8 +99,8 @@ def relu(x) :
 
 # TODO : other activation functions to evolve from! 
     
-activations = [linear, sigmoid, tanh, relu, np.sin]  
-#activations = [relu] # check 100% relu performance - I suspect it's the best anyway
+#activations = [linear, sigmoid, tanh, relu, np.sin]  
+activations = [relu, tanh] # check 100% relu performance - I suspect it's the best anyway
 
 # %% 
 class Individual() :
@@ -119,8 +121,8 @@ class Individual() :
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
             #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
-            self.W = [np.random.normal(0, 2, (nb_hidden, nb_input+1)), 
-                      np.random.normal(0, 2, (nb_output, nb_hidden+1))]
+            self.W = [np.random.normal(0, 2.5, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 2.5, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -231,7 +233,7 @@ def create_child(individual1, individual2) :
     # bottleneck for run time...
     W1 = individual1.W
     W2 = individual2.W
-    BETA = 5 # aggressive Laplace smoothing
+    BETA = 5 # initially aggressive Laplace smoothing
     prob1 = (individual1.fitness + BETA) / (individual1.fitness + individual2.fitness + 2*BETA) 
     if random.random() <= prob1 : # = case... ? 
         child = Individual(individual1.activation, rand_weights=False)
@@ -345,7 +347,7 @@ if __name__ == "__main__":
     best_sample = 85 # how many of the most fit individuals reproduce in a population
     lucky_few = 15 # number of randomly selected individuals who get to reproduce (for genetic diversity)
     nb_children = 4 # how many offspring each couple produces
-    nb_gens = 200 #  number of generations until program terminates
+    nb_gens = 100 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):
@@ -357,7 +359,7 @@ if __name__ == "__main__":
         historic = np.array(historic)
         historic_fitness = np.zeros((len(historic),))
         for i in range(len(historic)) :
-            historic_fitness = historic[i].fitness
+            historic_fitness[i] = historic[i].fitness
         plt.plot(historic_fitness)
         plt.title("peak fitness per population")
         plt.show()

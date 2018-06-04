@@ -59,7 +59,7 @@ BLUE = (0, 0, 255)
 NUM_PER_SPLIT = 3 # number of rocks a rock splits into when hit
 MAX_MISSILES = 3 # limit number of missiles possible to shoot 
 #visualize = False # figure out way to handle this outside file 
-SCORE_FOR_ROCK = 50
+SCORE_FOR_ROCK = 30
 SCORE_FOR_CLEARING = 10
 
 seed = 7 # for reproducibility (i.e. training) 
@@ -411,6 +411,8 @@ def find_neural_input(nn, ship, rocks, visualize) :
     TODO !!! no idea if the angle input is even working :/
     '''
     nn_in = np.zeros(nn.nb_input,) # TODO : ones or zeros? Something else? 
+    # sticking with zeros for now because it's the only one that seems to give
+    # actually interpretable movement (although not the best fitness) 
     dist_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK
     ang_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 1
     # TODO : decide whether or not to keep the size as input 
@@ -494,7 +496,7 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     rocks.append(first_rock) 
     second_rock = Rock([CANVAS_WIDTH, 0.], [-1., -1.]) 
     rocks.append(second_rock) 
-    spawn_random_rocks(player, score) 
+#    spawn_random_rocks(player, score) 
     # TODO : wtf is going on with the angle NN input?! 
 #    spawn_random_rocks(player, score)
     # TODO : delete following line (just for debugging) 
