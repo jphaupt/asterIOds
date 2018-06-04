@@ -62,7 +62,9 @@ MAX_MISSILES = 3 # limit number of missiles possible to shoot
 SCORE_FOR_ROCK = 30
 SCORE_FOR_CLEARING = 10
 
-seed = 7 # for reproducibility (i.e. training) 
+#seed = 7  # for reproducibility (i.e. training) 
+seed = None # for validation testing 
+#print(seed) 
 
 # %% classes for objects
 class Sprite : 
@@ -408,15 +410,16 @@ def find_neural_input(nn, ship, rocks, visualize) :
         angle / pi (so between -1 and 1)
         size / 3 TODO : improve this one...
         
-    TODO !!! no idea if the angle input is even working :/
     '''
     nn_in = np.zeros(nn.nb_input,) # TODO : ones or zeros? Something else? 
+#    print(nn_in.shape) 
     # sticking with zeros for now because it's the only one that seems to give
     # actually interpretable movement (although not the best fitness) 
     dist_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK
     ang_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 1
     # TODO : decide whether or not to keep the size as input 
-#    size_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 2
+    if neat.NUM_IN_PER_ROCK >= 3 : 
+        size_ind = np.arange(0,neat.NUM_ROCK_IN)*neat.NUM_IN_PER_ROCK + 2
     # TODO : initialize big distances?? 
     # initalize distances to a large number (getting NaN with np.inf)
 #    nn_in[dist_ind] = 100*np.max((CANVAS_WIDTH, CANVAS_HEIGHT))
@@ -457,7 +460,9 @@ def find_neural_input(nn, ship, rocks, visualize) :
         ret_ang /= np.pi  
         nn_in[ang_ind[i]] = ret_ang
 #        print(nn_in[ang_ind[i]])
-#        nn_in[size_ind[i]] = closest[i].size / 3
+        if neat.NUM_IN_PER_ROCK >= 3 :
+#            print(size_ind) 
+            nn_in[size_ind[i]] = closest[i].size / 3
     if visualize and is_running: 
         pygame.draw.line(canvas, WHITE, player.pos, player.pos) 
     nn_in[-1] = len(missiles) / MAX_MISSILES
@@ -492,11 +497,12 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     player = Ship([CANVAS_WIDTH / 2,CANVAS_HEIGHT / 2], [0.,0.], np.pi)
     # TODO : make the first rock intentionally attack the player? 
     # so that the network doesn't just stand in place
-    first_rock = Rock([0., CANVAS_HEIGHT/2], [1., 0.]) 
-    rocks.append(first_rock) 
-    second_rock = Rock([CANVAS_WIDTH, 0.], [-1., -1.]) 
-    rocks.append(second_rock) 
-#    spawn_random_rocks(player, score) 
+#    first_rock = Rock([0., CANVAS_HEIGHT/2], [1., 0.]) 
+#    rocks.append(first_rock) 
+#    second_rock = Rock([CANVAS_WIDTH, 0.], [-1., -1.]) 
+#    rocks.append(second_rock) 
+    spawn_random_rocks(player, score) 
+    spawn_random_rocks(player, score) 
     # TODO : wtf is going on with the angle NN input?! 
 #    spawn_random_rocks(player, score)
     # TODO : delete following line (just for debugging) 

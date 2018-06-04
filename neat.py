@@ -61,6 +61,7 @@ import random
 #import operator
 import time 
 import matplotlib.pyplot as plt
+from scipy.signal import sawtooth
 
 # %% constants for evolution
 #INITIAL_POP_SIZE = 10
@@ -68,10 +69,10 @@ NUM_ROCK_IN = 9
 NUM_IN_PER_ROCK = 2 # TODO ? input size of rock 
 INPUT_WIDTH = NUM_ROCK_IN * NUM_IN_PER_ROCK + 1 # one for # missiles fired 
 OUTPUT_WIDTH = 4
-HIDDEN_WIDTH = 40 # play with this parameter
-IN_W_MUTATE_PROB = 0.25
-OUT_W_MUTATE_PROB = 0.25
-ACTIVATION_MUTATE_PROB = 0.1
+HIDDEN_WIDTH = 30 # play with this parameter
+IN_W_MUTATE_PROB = 0.2
+OUT_W_MUTATE_PROB = 0.2
+ACTIVATION_MUTATE_PROB = 0.01
 NB_GAMES_PER_INDIV = 1 # TODO : increase, significantly 
 
 # time it
@@ -99,9 +100,9 @@ def relu(x) :
 
 # TODO : other activation functions to evolve from! 
     
-#activations = [linear, sigmoid, tanh, relu, np.sin]  
-activations = [relu, tanh] # check 100% relu performance - I suspect it's the best anyway
-
+#activations = [linear, sigmoid, tanh, relu, np.sin] # TODO : test sin only?! Use two neural networks?? 
+activations = [np.sin, np.cos, sawtooth]#[relu, tanh, sigmoid] # check 100% relu performance - I suspect it's the best anyway
+# Note : periodic functions *dominate* ... and in hindsight this should have been really obvious
 # %% 
 class Individual() :
     '''
@@ -121,8 +122,8 @@ class Individual() :
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
             #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
-            self.W = [np.random.normal(0, 2.5, (nb_hidden, nb_input+1)), 
-                      np.random.normal(0, 2.5, (nb_output, nb_hidden+1))]
+            self.W = [np.random.normal(0, 2, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 2, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -233,7 +234,7 @@ def create_child(individual1, individual2) :
     # bottleneck for run time...
     W1 = individual1.W
     W2 = individual2.W
-    BETA = 5 # initially aggressive Laplace smoothing
+    BETA = 10 # initially aggressive Laplace smoothing
     prob1 = (individual1.fitness + BETA) / (individual1.fitness + individual2.fitness + 2*BETA) 
     if random.random() <= prob1 : # = case... ? 
         child = Individual(individual1.activation, rand_weights=False)
@@ -280,11 +281,11 @@ def mutate_W(individual) :
     '''
     if random.random() <= IN_W_MUTATE_PROB : # mutate input layer
         mu = 0#random.uniform(-0.1, 0.1) # mean 
-        sigma = random.uniform(0.05, 0.3) # std
+        sigma = 0.2#random.uniform(0.1, 0.2) # std
         individual.W[0] += np.random.normal(mu, sigma, individual.W[0].shape) 
     if random.random() <= OUT_W_MUTATE_PROB : # mutation output layer weights
         mu = 0#random.uniform(-0.1, 0.1) 
-        sigma = random.uniform(0.05, 0.3) 
+        sigma = 0.2#random.uniform(0.1, 0.2) 
         individual.W[1] += np.random.normal(mu, sigma, individual.W[1].shape)
         
 def mutate_activation(individual) : 
@@ -343,11 +344,11 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
 if __name__ == "__main__":
     # TODO : run for lots of generations 
     # hyperparameters for algorithm to run on
-    size_population = 200 # size of the population each generation
-    best_sample = 85 # how many of the most fit individuals reproduce in a population
-    lucky_few = 15 # number of randomly selected individuals who get to reproduce (for genetic diversity)
-    nb_children = 4 # how many offspring each couple produces
-    nb_gens = 100 #  number of generations until program terminates
+    size_population = 99 # size of the population each generation
+    best_sample = 45 # how many of the most fit individuals reproduce in a population
+    lucky_few = 21 # number of randomly selected individuals who get to reproduce (for genetic diversity)
+    nb_children = 3 # how many offspring each couple produces
+    nb_gens = 20 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):
