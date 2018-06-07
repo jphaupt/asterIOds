@@ -46,8 +46,8 @@ import neat
 # %% global values
 # constants
 # game height and width in pixels
-CANVAS_HEIGHT = 600
-CANVAS_WIDTH = 600
+CANVAS_HEIGHT = 1000
+CANVAS_WIDTH = 1000
 MIN_ROCK_RADIUS = 15
 SHIP_WIDTH = 6 * 3 # TODO : still not sure about ship size
 SHIP_HEIGHT = 10 * 3
@@ -345,7 +345,7 @@ def spawn_random_rocks(ship, score) :
     # not sure what number to divide score by 
     # TODO : seems NNs have no idea what to do when there is less than 5 rocks
     # how many rocks do I spawn? make func tion of score? make random?
-    num_to_spawn = int(score/SCORE_FOR_ROCK) + 1#random.randint(1,4) 
+    num_to_spawn = int(score/SCORE_FOR_ROCK) + 2#random.randint(1,4) 
     for i in range(num_to_spawn) : 
         ang = random.uniform(0, 2 * np.pi)
         r = random.uniform(SHIP_HEIGHT * 5, CANVAS_WIDTH - SHIP_HEIGHT * 5)
@@ -497,11 +497,11 @@ def game_loop(isAI=False, nn=None, visualize=True) :
     player = Ship([CANVAS_WIDTH / 2,CANVAS_HEIGHT / 2], [0.,0.], np.pi)
     # TODO : make the first rock intentionally attack the player? 
     # so that the network doesn't just stand in place
-#    first_rock = Rock([0., CANVAS_HEIGHT/2], [1., 0.]) 
-#    rocks.append(first_rock) 
+    first_rock = Rock([0., CANVAS_HEIGHT/2], [1., 0.]) 
+    rocks.append(first_rock) 
 #    second_rock = Rock([CANVAS_WIDTH, 0.], [-1., -1.]) 
 #    rocks.append(second_rock) 
-    spawn_random_rocks(player, score) 
+#    spawn_random_rocks(player, score) 
     spawn_random_rocks(player, score) 
     # TODO : wtf is going on with the angle NN input?! 
 #    spawn_random_rocks(player, score)

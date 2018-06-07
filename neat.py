@@ -66,13 +66,13 @@ from scipy.signal import sawtooth
 # %% constants for evolution
 #INITIAL_POP_SIZE = 10
 NUM_ROCK_IN = 9
-NUM_IN_PER_ROCK = 2 # TODO ? input size of rock 
+NUM_IN_PER_ROCK = 3 # TODO ? input size of rock 
 INPUT_WIDTH = NUM_ROCK_IN * NUM_IN_PER_ROCK + 1 # one for # missiles fired 
 OUTPUT_WIDTH = 4
-HIDDEN_WIDTH = 30 # play with this parameter
+HIDDEN_WIDTH = int(INPUT_WIDTH*1.5) # play with this parameter
 IN_W_MUTATE_PROB = 0.2
 OUT_W_MUTATE_PROB = 0.2
-ACTIVATION_MUTATE_PROB = 0.01
+ACTIVATION_MUTATE_PROB = 0.02
 NB_GAMES_PER_INDIV = 1 # TODO : increase, significantly 
 
 # time it
@@ -101,8 +101,9 @@ def relu(x) :
 # TODO : other activation functions to evolve from! 
     
 #activations = [linear, sigmoid, tanh, relu, np.sin] # TODO : test sin only?! Use two neural networks?? 
-activations = [np.sin, np.cos, sawtooth]#[relu, tanh, sigmoid] # check 100% relu performance - I suspect it's the best anyway
+activations = [np.sin, np.cos, sawtooth, tanh, relu, linear, sigmoid]#[relu, tanh, sigmoid] # check 100% relu performance - I suspect it's the best anyway
 # Note : periodic functions *dominate* ... and in hindsight this should have been really obvious
+# sawtooth seems to dominate
 # %% 
 class Individual() :
     '''
@@ -122,8 +123,8 @@ class Individual() :
         # during initialization? maybe a parameter to __init__? 
         if rand_weights :
             #[2*np.random.randn(nb_hidden, nb_input+1), 2*np.random.randn(nb_output, nb_hidden+1)]
-            self.W = [np.random.normal(0, 2, (nb_hidden, nb_input+1)), 
-                      np.random.normal(0, 2, (nb_output, nb_hidden+1))]
+            self.W = [np.random.normal(0, 4, (nb_hidden, nb_input+1)), 
+                      np.random.normal(0, 4, (nb_output, nb_hidden+1))]
         else : #initialize to zeros for space preallocation
             self.W = [np.zeros((nb_hidden, nb_input+1)), np.zeros((nb_output, nb_hidden+1))] 
         self.activation = activation
@@ -149,6 +150,7 @@ def fitness(indiv) :
     TODO : average a few games to reduce randomly succeeding ? 
     currently averaging five games
     TODO : should I make this more complicated? time alive? # times cleared?
+    TODO probably should add time alive...
     '''
     acc = 0
     for i in range(NB_GAMES_PER_INDIV) : 
@@ -234,7 +236,7 @@ def create_child(individual1, individual2) :
     # bottleneck for run time...
     W1 = individual1.W
     W2 = individual2.W
-    BETA = 10 # initially aggressive Laplace smoothing
+    BETA = 10/NB_GAMES_PER_INDIV # initially aggressive Laplace smoothing
     prob1 = (individual1.fitness + BETA) / (individual1.fitness + individual2.fitness + 2*BETA) 
     if random.random() <= prob1 : # = case... ? 
         child = Individual(individual1.activation, rand_weights=False)
@@ -281,11 +283,11 @@ def mutate_W(individual) :
     '''
     if random.random() <= IN_W_MUTATE_PROB : # mutate input layer
         mu = 0#random.uniform(-0.1, 0.1) # mean 
-        sigma = 0.2#random.uniform(0.1, 0.2) # std
+        sigma = 0.4#random.uniform(0.1, 0.2) # std
         individual.W[0] += np.random.normal(mu, sigma, individual.W[0].shape) 
     if random.random() <= OUT_W_MUTATE_PROB : # mutation output layer weights
         mu = 0#random.uniform(-0.1, 0.1) 
-        sigma = 0.2#random.uniform(0.1, 0.2) 
+        sigma = 0.4#random.uniform(0.1, 0.2) 
         individual.W[1] += np.random.normal(mu, sigma, individual.W[1].shape)
         
 def mutate_activation(individual) : 
@@ -336,7 +338,7 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
         curr_pop, prev_best = next_generation(curr_pop, nb_children, best_sample, lucky_few)
         historic.append(prev_best) 
 #        print(prev_best[1]) # current best performing individual in the population
-        print("%i(%i)," % ((i+1), prev_best.fitness), end="")
+        print("%i(%.2f)," % ((i+1), prev_best.fitness), end="")
     historic.append(compute_pop_score(curr_pop)[0]) # last best 
     return historic, curr_pop
 
@@ -344,11 +346,11 @@ def multi_gen(nb_generation, size_pop, best_sample, lucky_few, nb_children):
 if __name__ == "__main__":
     # TODO : run for lots of generations 
     # hyperparameters for algorithm to run on
-    size_population = 99 # size of the population each generation
-    best_sample = 45 # how many of the most fit individuals reproduce in a population
-    lucky_few = 21 # number of randomly selected individuals who get to reproduce (for genetic diversity)
+    size_population = 2*99 # size of the population each generation
+    best_sample = 2*45 # how many of the most fit individuals reproduce in a population
+    lucky_few = 2*21 # number of randomly selected individuals who get to reproduce (for genetic diversity)
     nb_children = 3 # how many offspring each couple produces
-    nb_gens = 20 #  number of generations until program terminates
+    nb_gens = 150 #  number of generations until program terminates
     
     # genetic algo
     if ((best_sample + lucky_few) / 2 * nb_children != size_population):
